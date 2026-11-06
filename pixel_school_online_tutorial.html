@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PIXEL SCHOOL — Online prototype</title>
+<style>
+:root{--ink:#263044;--muted:#69758b;--paper:#fffdf7;--line:#e6e3d9;--blue:#6b8fd6;--green:#d9efdf}
+*{box-sizing:border-box}body{margin:0;background:#f4f2eb;color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#fff;border-bottom:1px solid var(--line);gap:12px;flex-wrap:wrap}
+.logo{font-weight:900;letter-spacing:.08em}.logo span{color:var(--blue)}.tag,.note{font-size:12px;color:var(--muted)}
+main{max-width:1200px;margin:16px auto;padding:0 13px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.85fr);gap:13px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:13px;box-shadow:0 4px 18px #2630440a}
+h2{font-size:16px;margin:0 0 10px}h3{font-size:14px;margin:12px 0 7px}
+canvas{width:100%;height:auto;display:block;border:3px solid #34435a;border-radius:8px;background:#d7ead8;image-rendering:pixelated;touch-action:none}
+.hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:8px 0;color:var(--muted);font-size:12px}
+.controls{display:flex;gap:7px;justify-content:center;margin-top:7px}
+button,input,select,textarea{font:inherit}button{border:0;border-radius:10px;padding:9px 12px;background:#e8eefb;color:#263044;cursor:pointer;font-weight:650}button.primary{background:var(--blue);color:white}button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;background:#fff;color:var(--ink);margin:4px 0 8px}
+label{font-size:12px;color:var(--muted);font-weight:650}.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}.tabs button{background:#f0eee7;padding:8px;font-size:12px}.tabs button.active{background:var(--blue);color:white}
+.log{height:160px;overflow:auto;background:#f7f6f0;border-radius:10px;padding:8px;margin:7px 0;font-size:13px}.msg{margin:5px 0;padding:7px 9px;background:white;border-radius:9px;overflow-wrap:anywhere}.msg b{color:#5478bd}
+.row{display:flex;gap:6px}.row>*{flex:1;min-width:0}.status{font-size:12px;padding:8px 10px;background:#edf5ef;border-radius:8px;margin:7px 0;line-height:1.5}.status.off{background:#fff2df}.hidden{display:none}.preview{font-size:30px;text-align:center;background:#f3f0e7;padding:8px;border-radius:10px}
+.note{line-height:1.55}.tab.hidden{display:none}
+#tutorial{position:fixed;inset:0;background:#1c263bcc;display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+.modal{width:min(520px,100%);background:#fffdf7;border-radius:18px;padding:20px;box-shadow:0 18px 60px #0004}.steps{display:flex;gap:5px;margin:12px 0}.dot{height:6px;flex:1;border-radius:8px;background:#e5e5df}.dot.on{background:var(--blue)}.steptext{min-height:88px;line-height:1.7}.modalfoot{display:flex;justify-content:space-between;gap:8px}
+#toast{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:#263044;color:white;padding:9px 14px;border-radius:20px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+@media(max-width:800px){main{grid-template-columns:1fr;margin:9px auto}header{padding:10px 13px}canvas{max-height:53vh}.panel{padding:11px}}
+</style>
+</head>
+<body>
+<header><div><div class="logo">PIXEL <span>SCHOOL</span></div><div class="tag">オンライン高校生活 — prototype 0.2</div></div><div class="row" style="max-width:230px"><button id="helpBtn">？ チュートリアル</button><span id="onlineBadge" class="status off">未接続</span></div></header>
+<main>
+<section class="panel">
+ <h2>🏫 校内マップ <span class="tag">クラス共有ルーム</span></h2>
+ <canvas id="game" width="640" height="416"></canvas>
+ <div class="hud"><span>移動：矢印キー / WASD</span><span id="peopleCount">オンライン：0人</span></div>
+ <div class="controls"><button data-move="up">▲</button></div>
+ <div class="controls"><button data-move="left">◀</button><button data-move="down">▼</button><button data-move="right">▶</button></div>
+ <p class="note">オンライン接続後、同じルームコードの参加者がマップに表示されます。移動と近距離チャットは接続中の参加者間で同期します。</p>
+</section>
+<aside class="panel">
+ <div class="tabs"><button class="active" data-tab="chat">チャット</button><button data-tab="setup">オンライン設定</button><button data-tab="avatar">アバター</button><button data-tab="board">掲示板</button></div>
+ <section id="chat" class="tab">
+  <h2>💬 近距離チャット</h2><div id="nearStatus" class="status">オンライン接続すると、近くの人と会話できます。</div>
+  <div id="nearLog" class="log"><div class="msg">ここに近距離チャットが表示されます。</div></div>
+  <div class="row"><input id="nearInput" maxlength="160" placeholder="メッセージ…"><button class="primary" id="nearSend">送信</button></div>
+  <h3>⭐ 友達限定チャット</h3>
+  <label>友達のニックネーム（同じ相手を選んでね）</label><input id="friendName" maxlength="16" placeholder="友達のニックネーム">
+  <div id="dmLog" class="log"></div>
+  <div class="row"><input id="dmInput" maxlength="160" placeholder="友達へのメッセージ…"><button id="dmSend">送信</button></div>
+  <p class="note">友達チャットは相手と同じ名前を指定した専用チャンネル方式の試作です。本人確認・本番用の友達承認機能は未実装です。</p>
+ </section>
+ <section id="setup" class="tab hidden">
+  <h2>🌐 オンライン接続</h2>
+  <div id="connectionStatus" class="status off">Supabaseの接続情報を設定してください。</div>
+  <label>Supabase Project URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co" autocomplete="url">
+  <label>Supabase anon / publishable key</label><input id="sbKey" placeholder="公開用キー（service_roleキーは絶対に入力しない）">
+  <label>学校・クラスのルームコード</label><input id="roomCode" value="HIDAMARI-1A" maxlength="32">
+  <div class="row"><button class="primary" id="connectBtn">接続する</button><button id="disconnectBtn">切断</button></div>
+  <p class="note">接続にはSupabaseプロジェクトが必要です。URLと公開用anon/publishable keyを入力すると、同じルームコードのブラウザ同士でリアルタイム同期します。入力した接続情報はこのページ内だけで使い、保存しません。</p>
+  <h3>学校・クラス</h3>
+  <label>学校名</label><input id="schoolName" value="ひだまり高校">
+  <label>クラス名</label><input id="className" value="1年A組">
+  <button id="makeCode">招待用コードを作る（画面上の仮コード）</button><div id="codeResult" class="status hidden"></div>
+ </section>
+ <section id="avatar" class="tab hidden">
+  <h2>🎨 アバター</h2><div id="preview" class="preview">🧑🏻‍🎓</div>
+  <label>ニックネーム</label><input id="nickname" value="さくら" maxlength="16">
+  <label>アバター</label><select id="hair"><option value="🧑🏻‍🎓">ショート</option><option value="👩🏻‍🎓">ロング</option><option value="🧑🏽‍🎓">くせ毛</option><option value="👨🏻‍🎓">ミディアム</option></select>
+  <label>制服カラー</label><select id="uniform"><option value="#6b8fd6">ブルー</option><option value="#d77c9c">ピンク</option><option value="#6b9b82">グリーン</option><option value="#777b8b">グレー</option></select>
+  <button class="primary" id="saveAvatar">反映する</button>
+ </section>
+ <section id="board" class="tab hidden">
+  <h2>📌 クラス掲示板（ローカル試作）</h2><div id="posts" class="log"><div class="msg">掲示板のオンライン共有は次の実装段階です。</div></div>
+  <textarea id="postText" rows="3" maxlength="240" placeholder="クラスのみんなに伝えたいこと…"></textarea><button id="postSend" class="primary">投稿する</button>
+ </section>
+</aside>
+</main>
+<div id="tutorial"><div class="modal"><div class="tag">はじめての登校</div><h2 id="tTitle">PIXEL SCHOOLへようこそ！</h2><div class="steps"><i class="dot on"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div id="tText" class="steptext">ここは、アバターで歩き回れるオンラインの学校です。まずは簡単な使い方を確認しよう！</div><div class="modalfoot"><button id="skipTutorial">あとで</button><button class="primary" id="nextTutorial">次へ</button></div></div></div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d'),tile=32,cols=20,rows=13;
+let player={x:9,y:8},avatar={nick:'さくら',emoji:'🧑🏻‍🎓',color:'#6b8fd6'},client=null,channel=null,connected=false,peers={},myId=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)),lastBroadcast=0;
+const tutorial=[
+['PIXEL SCHOOLへようこそ！','ここは、アバターで歩き回れるオンラインの学校です。まずは簡単な使い方を確認しよう！'],
+['① アバターを作ろう','「アバター」タブでニックネーム・見た目・制服カラーを設定して「反映する」を押そう。個人情報や本名は入力しないでね。'],
+['② 同じクラスに接続','「オンライン設定」にSupabaseのProject URLと公開用キーを入力し、同じルームコードを使うと同じ教室に集まれます。'],
+['③ 歩いて話そう','矢印キー・WASD・画面の方向ボタンで移動。近くにいる参加者と近距離チャットができます。友達チャットは相手と同じニックネームを指定する試作機能です。']
+];let step=0;
+function showTutorial(){step=0;$('tutorial').classList.remove('hidden');renderStep()}
+function renderStep(){$('tTitle').textContent=tutorial[step][0];$('tText').textContent=tutorial[step][1];document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i<=step));$('nextTutorial').textContent=step===tutorial.length-1?'はじめる':'次へ'}
+$('nextTutorial').onclick=()=>{if(step<tutorial.length-1){step++;renderStep()}else $('tutorial').classList.add('hidden')};$('skipTutorial').onclick=()=>$('tutorial').classList.add('hidden');$('helpBtn').onclick=showTutorial;
+function toast(s){$('toast').textContent=s;$('toast').style.opacity=1;setTimeout(()=>$('toast').style.opacity=0,1800)}
+function drawPerson(x,y,emoji,color,name,me=false){let px=x*tile,py=y*tile;ctx.fillStyle='#0002';ctx.fillRect(px+6,py+25,21,5);ctx.fillStyle=color;ctx.fillRect(px+7,py+15,18,13);ctx.fillStyle='#f3c9a7';ctx.fillRect(px+9,py+3,14,13);ctx.fillStyle='#57453d';ctx.fillRect(px+8,py+1,16,6);ctx.font='17px sans-serif';ctx.fillText(emoji,px+5,py+19);ctx.fillStyle=me?'#345b9e':'#344054';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(name,px+16,py-3);ctx.textAlign='left'}
+function draw(){ctx.clearRect(0,0,640,416);for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){let room=x>=1&&x<=18&&y>=1&&y<=11;ctx.fillStyle=room?'#e7dfc9':'#9fc69f';ctx.fillRect(x*tile,y*tile,tile,tile);ctx.strokeStyle=room?'#d6ceb9':'#88b68b';ctx.strokeRect(x*tile,y*tile,tile,tile)}ctx.fillStyle='#7b5c47';ctx.fillRect(32,32,576,10);ctx.fillRect(32,32,10,352);ctx.fillRect(598,32,10,352);ctx.fillStyle='#315c50';ctx.fillRect(250,42,140,15);ctx.fillStyle='#f5f0d9';ctx.font='10px sans-serif';ctx.fillText('CLASS 1-A',292,53);for(let y of [3,5,7])for(let x of [4,7,10,13,16]){ctx.fillStyle='#b9875d';ctx.fillRect(x*tile,y*tile,24,17);ctx.fillStyle='#8d6448';ctx.fillRect(x*tile+3,y*tile+17,18,3)}
+Object.values(peers).forEach(p=>{if(p.id!==myId)drawPerson(p.x,p.y,p.emoji||'🧑🏻‍🎓',p.color||'#d77c9c',p.nick||'生徒')});drawPerson(player.x,player.y,avatar.emoji,avatar.color,avatar.nick,true)}
+function nearby(){return Object.values(peers).filter(p=>p.id!==myId&&Math.abs(p.x-player.x)+Math.abs(p.y-player.y)<=4)}
+function updateCounts(){let n=Object.keys(peers).filter(k=>k!==myId).length;$('peopleCount').textContent='オンライン：'+(connected?n+1:0)+'人';let near=nearby();$('nearStatus').textContent=connected?(near.length?'近くに '+near.map(p=>p.nick).join('、')+' がいます。':'近くにいる人はいません。移動してみよう！'):'オンライン未接続です。オンライン設定から接続してください。';}
+function move(dx,dy){player.x=Math.max(1,Math.min(18,player.x+dx));player.y=Math.max(1,Math.min(10,player.y+dy));draw();updateCounts();broadcastPosition()}
+document.addEventListener('keydown',e=>{let m={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};if(m[e.key]&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();move(...m[e.key])}});
+document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{let m={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};move(...m[b.dataset.move])});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab))});
+function addMessage(log,nick,text){let d=document.createElement('div');d.className='msg';let b=document.createElement('b');b.textContent=nick+'：';d.append(b,document.createTextNode(text));log.append(d);log.scrollTop=log.scrollHeight}
+function sendChat(input,kind){let text=input.value.trim();if(!text)return;if(!connected||!channel){toast('先にオンライン接続してね');return}if(kind==='near'&&!nearby().length){toast('近くにいる参加者がいません');return}let target=kind==='dm'?$ ('friendName').value.trim():null;if(kind==='dm'&&!target){toast('友達のニックネームを入力してね');return}channel.send({type:'broadcast',event:kind==='near'?'near_chat':'dm_chat',payload:{id:myId,nick:avatar.nick,text,from:avatar.nick,to:target,at:Date.now()}});addMessage(kind==='near'?$ ('nearLog'):$ ('dmLog'),avatar.nick,text);input.value=''}
+$('nearSend').onclick=()=>sendChat($('nearInput'),'near');$('dmSend').onclick=()=>sendChat($('dmInput'),'dm');
+['nearInput','dmInput'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')$(id==='nearInput'?'nearSend':'dmSend').click()}));
+function broadcastPosition(){if(!connected||!channel)return;channel.track({id:myId,nick:avatar.nick,emoji:avatar.emoji,color:avatar.color,x:player.x,y:player.y,online_at:new Date().toISOString()})}
+async function disconnect(){if(channel){try{await channel.unsubscribe()}catch(e){}channel=null}if(client){client=null}connected=false;peers={};$('onlineBadge').textContent='未接続';$('onlineBadge').classList.add('off');$('connectionStatus').textContent='切断しました。';$('connectionStatus').classList.add('off');draw();updateCounts()}
+$('connectBtn').onclick=async()=>{let url=$('sbUrl').value.trim(),key=$('sbKey').value.trim(),room=$('roomCode').value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'');if(!window.supabase){toast('通信ライブラリを読み込めませんでした');return}if(!url||!key||!room){toast('URL・公開用キー・ルームコードを入力してね');return}await disconnect();try{client=window.supabase.createClient(url,key);channel=client.channel('pixel-school-'+room,{config:{presence:{key:myId},broadcast:{self:false}}});
+channel.on('presence',{event:'sync'},()=>{let state=channel.presenceState();peers={};Object.values(state).flat().forEach(p=>{if(p&&p.id)peers[p.id]=p});draw();updateCounts()});
+channel.on('broadcast',{event:'position'},({payload})=>{if(payload&&payload.id!==myId){peers[payload.id]=payload;draw();updateCounts()}});
+channel.on('broadcast',{event:'near_chat'},({payload})=>{if(payload&&payload.id!==myId&&Math.abs(payload.x-player.x)+Math.abs(payload.y-player.y)<=4)addMessage($('nearLog'),payload.nick,payload.text)});
+channel.on('broadcast',{event:'dm_chat'},({payload})=>{if(payload&&payload.id!==myId&&(payload.to===avatar.nick||payload.from=== $('friendName').value.trim()))addMessage($('dmLog'),payload.nick,payload.text)});
+channel.subscribe(async status=>{if(status==='SUBSCRIBED'){connected=true;$('onlineBadge').textContent='オンライン';$('onlineBadge').classList.remove('off');$('connectionStatus').textContent='接続しました！同じルームコードの人が参加できます。';$('connectionStatus').classList.remove('off');await broadcastPosition();toast('オンライン教室に接続！')}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){connected=false;$('connectionStatus').textContent='接続できません。URL・キー・通信設定を確認してください。';$('connectionStatus').classList.add('off');updateCounts()}});
+}catch(e){$('connectionStatus').textContent='接続エラー：'+e.message;$('connectionStatus').classList.add('off');toast('接続に失敗しました')}}
+$('disconnectBtn').onclick=disconnect;
+$('saveAvatar').onclick=()=>{avatar.nick=$('nickname').value.trim()||'生徒';avatar.emoji=$('hair').value;avatar.color=$('uniform').value;$('preview').textContent=avatar.emoji;$('preview').style.borderBottom='5px solid '+avatar.color;draw();broadcastPosition();toast('アバターを反映しました')};
+$('hair').onchange=()=>$('preview').textContent=$('hair').value;$('uniform').onchange=()=>$('preview').style.borderBottom='5px solid '+$('uniform').value;
+$('makeCode').onclick=()=>{let code='PS-'+Math.random().toString(36).slice(2,6).toUpperCase()+'-'+Math.floor(10+Math.random()*90);$('codeResult').classList.remove('hidden');$('codeResult').textContent=$('schoolName').value+' '+$('className').value+' の仮コード：'+code+'（実際の参加認証は未実装）'};
+$('postSend').onclick=()=>{let v=$('postText').value.trim();if(v){addMessage($('posts'),avatar.nick,v);$('postText').value=''}};
+draw();updateCounts();$('preview').textContent=avatar.emoji;
+</script>
+</body></html>
